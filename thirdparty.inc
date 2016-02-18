@@ -19,10 +19,15 @@ set (THIRDPARTY_LIBS "")         # Initialization, don't touch
 #
 # Edit these 4 lines to define paths to GFLAGS
 #
-set(GFLAGS_HOME $ENV{THIRDPARTY_HOME}/Gflags.Library)
-set(GFLAGS_INCLUDE ${GFLAGS_HOME}/inc/include)
-set(GFLAGS_LIB_DEBUG ${GFLAGS_HOME}/bin/debug/amd64/gflags.lib)
-set(GFLAGS_LIB_RELEASE ${GFLAGS_HOME}/bin/retail/amd64/gflags.lib)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(GFLAGS_HOME $ENV{THIRDPARTY_HOME}/Gflags.Library)
+    set(GFLAGS_INCLUDE ${GFLAGS_HOME}/inc/include)
+    set(GFLAGS_LIB_DEBUG ${GFLAGS_HOME}/bin/debug/amd64/gflags.lib)
+    set(GFLAGS_LIB_RELEASE ${GFLAGS_HOME}/bin/retail/amd64/gflags.lib)
+else()
+    set(GFLAGS_LIB_DEBUG -lgflags)
+    set(GFLAGS_LIB_RELEASE -lgflags)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 # ================================================== GFLAGS ==================================================
 #
@@ -63,10 +68,15 @@ endif ()
 #
 # Edit these 4 lines to define paths to Snappy
 #
-set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
-set(SNAPPY_INCLUDE ${SNAPPY_HOME}/inc/inc)
-set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/bin/debug/amd64/snappy.lib)
-set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/bin/retail/amd64/snappy.lib)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
+    set(SNAPPY_INCLUDE ${SNAPPY_HOME}/inc/inc)
+    set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/bin/debug/amd64/snappy.lib)
+    set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/bin/retail/amd64/snappy.lib)
+else()
+    set(SNAPPY_LIB_DEBUG -lsnappy)
+    set(SNAPPY_LIB_RELEASE -lsnappy)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 #
 # Don't touch these lines
@@ -106,10 +116,15 @@ endif ()
 #
 # Edit these 4 lines to define paths to LZ4
 #
-set(LZ4_HOME $ENV{THIRDPARTY_HOME}/LZ4.Library)
-set(LZ4_INCLUDE ${LZ4_HOME}/inc/include)
-set(LZ4_LIB_DEBUG ${LZ4_HOME}/bin/debug/amd64/lz4.lib)
-set(LZ4_LIB_RELEASE ${LZ4_HOME}/bin/retail/amd64/lz4.lib)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(LZ4_HOME $ENV{THIRDPARTY_HOME}/LZ4.Library)
+    set(LZ4_INCLUDE ${LZ4_HOME}/inc/include)
+    set(LZ4_LIB_DEBUG ${LZ4_HOME}/bin/debug/amd64/lz4.lib)
+    set(LZ4_LIB_RELEASE ${LZ4_HOME}/bin/retail/amd64/lz4.lib)
+else()
+    set(LZ4_LIB_DEBUG -llz4)
+    set(LZ4_LIB_RELEASE -llz4)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 #
 # Don't touch these lines
@@ -149,10 +164,15 @@ endif ()
 #
 # Edit these 4 lines to define paths to ZLIB
 #
-set(ZLIB_HOME $ENV{THIRDPARTY_HOME}/ZLIB.Library)
-set(ZLIB_INCLUDE ${ZLIB_HOME}/inc/include)
-set(ZLIB_LIB_DEBUG ${ZLIB_HOME}/bin/debug/amd64/zlib.lib)
-set(ZLIB_LIB_RELEASE ${ZLIB_HOME}/bin/retail/amd64/zlib.lib)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(ZLIB_HOME $ENV{THIRDPARTY_HOME}/ZLIB.Library)
+    set(ZLIB_INCLUDE ${ZLIB_HOME}/inc/include)
+    set(ZLIB_LIB_DEBUG ${ZLIB_HOME}/bin/debug/amd64/zlib.lib)
+    set(ZLIB_LIB_RELEASE ${ZLIB_HOME}/bin/retail/amd64/zlib.lib)
+else()
+    set(ZLIB_LIB_DEBUG -lz)
+    set(ZLIB_LIB_RELEASE -lz)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 #
 # Don't touch these lines
@@ -191,10 +211,15 @@ endif ()
 #
 # Edit these 4 lines to define paths to Jemalloc
 #
-set(JEMALLOC_HOME $ENV{THIRDPARTY_HOME}/Jemalloc.Library)
-set(JEMALLOC_INCLUDE ${JEMALLOC_HOME}/inc/include)
-set(JEMALLOC_LIB_DEBUG ${JEMALLOC_HOME}/bin/debug/amd64/jemalloc.lib)
-set(JEMALLOC_LIB_RELEASE ${JEMALLOC_HOME}/bin/retail/amd64/jemalloc.lib)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(JEMALLOC_HOME $ENV{THIRDPARTY_HOME}/Jemalloc.Library)
+    set(JEMALLOC_INCLUDE ${JEMALLOC_HOME}/inc/include)
+    set(JEMALLOC_LIB_DEBUG ${JEMALLOC_HOME}/bin/debug/amd64/jemalloc.lib)
+    set(JEMALLOC_LIB_RELEASE ${JEMALLOC_HOME}/bin/retail/amd64/jemalloc.lib)
+else()
+    set(JEMALLOC_LIB_DEBUG -ljemalloc)
+    set(JEMALLOC_LIB_RELEASE -ljemalloc)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 # ================================================== JEMALLOC ==================================================
 #

@@ -30,36 +30,50 @@ cmake_minimum_required(VERSION 2.6)
 project(rocksdb)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty.inc)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 execute_process(COMMAND powershell -Command "Get-Date -format MM_dd_yyyy" OUTPUT_VARIABLE DATE)
 execute_process(COMMAND powershell -Command "Get-Date -format HH:mm:ss" OUTPUT_VARIABLE TIME)
 string(REGEX REPLACE "(..)_(..)_..(..).*" "\\1/\\2/\\3" DATE ${DATE})
 string(REGEX REPLACE "(..):(.....).*" " \\1:\\2" TIME ${TIME})
 string(CONCAT GIT_DATE_TIME ${DATE} ${TIME})
+else()
+execute_process(COMMAND date "+%Y/%m/%d %H:%M:%S" OUTPUT_VARIABLE DATETIME)
+string(REGEX REPLACE "\n" "" DATETIME ${DATETIME})
+string(CONCAT GIT_DATE_TIME ${DATETIME})
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 find_package(Git)
 
 if (GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
-    execute_process(COMMAND $ENV{COMSPEC} /C ${GIT_EXECUTABLE} -C ${CMAKE_CURRENT_SOURCE_DIR} rev-parse HEAD OUTPUT_VARIABLE GIT_SHA)
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	execute_process(COMMAND $ENV{COMSPEC} /C ${GIT_EXECUTABLE} -C ${CMAKE_CURRENT_SOURCE_DIR} rev-parse HEAD OUTPUT_VARIABLE GIT_SHA)
+    else()
+	execute_process(COMMAND ${GIT_EXECUTABLE} -C ${CMAKE_CURRENT_SOURCE_DIR} rev-parse HEAD OUTPUT_VARIABLE GIT_SHA)
+    endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 else()
     set(GIT_SHA 0)
 endif()
 
 string(REGEX REPLACE "[^0-9a-f]+" "" GIT_SHA ${GIT_SHA})
 
-set(BUILD_VERSION_CC ${CMAKE_CURRENT_SOURCE_DIR}/util/build_version.cc)
+set(BUILD_VERSION_CC ${CMAKE_BINARY_DIR}/build_version.cc)
 
-add_custom_command(OUTPUT ${BUILD_VERSION_CC}
-    COMMAND echo "#include \"build_version.h\"" > ${BUILD_VERSION_CC}
-    COMMAND echo "const char* rocksdb_build_git_sha = \"rocksdb_build_git_sha:${GIT_SHA}\";" >> ${BUILD_VERSION_CC}
-    COMMAND echo "const char* rocksdb_build_git_datetime = \"rocksdb_build_git_datetime:${GIT_DATE_TIME}\";" >> ${BUILD_VERSION_CC}
-    COMMAND echo const char* rocksdb_build_compile_date = __DATE__\; >> ${BUILD_VERSION_CC}
+    file(GENERATE OUTPUT ${BUILD_VERSION_CC} CONTENT "#include \"build_version.h\"
+const char* rocksdb_build_git_sha = \"rocksdb_build_git_sha:${GIT_SHA}\";
+const char* rocksdb_build_git_datetime = \"rocksdb_build_git_datetime:${GIT_DATE_TIME}\";
+const char* rocksdb_build_compile_date = __DATE__;
+"
 )
 
 add_custom_target(GenerateBuildVersion DEPENDS ${BUILD_VERSION_CC})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi /nologo  /EHsc /GS /Gd /GR /GF /fp:precise /Zc:wchar_t /Zc:forScope /errorReport:queue")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi /nologo  /EHsc /GS /Gd /GR /GF /fp:precise /Zc:wchar_t /Zc:forScope /errorReport:queue")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /FC /d2Zi+ /W3 /WX /wd4127 /wd4800 /wd4996 /wd4351")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /FC /d2Zi+ /W3 /WX /wd4127 /wd4800 /wd4996 /wd4351")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W -Wextra -Wall -Wsign-compare -Wshadow -Wno-unused-parameter -Wno-unused-variable -Werror -std=c++11 -march=native -fno-omit-frame-pointer -momit-leaf-frame-pointer -Woverloaded-virtual -Wnon-virtual-dtor -Wno-missing-field-initializers")
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 # Used to run CI build and tests so we can run faster
 set(OPTIMIZE_DEBUG_DEFAULT 0)        # Debug build is unoptimized by default use -DOPTDBG=1 to optimize
@@ -70,6 +84,7 @@ else()
    set(OPTIMIZE_DEBUG ${OPTIMIZE_DEBUG_DEFAULT})
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 if((${OPTIMIZE_DEBUG} EQUAL 1))
    message(STATUS "Debug optimization is enabled")
    set(CMAKE_CXX_FLAGS_DEBUG "/Oxt /MDd")
@@ -83,16 +98,23 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
 
 add_definitions(-DWIN32 -DOS_WIN -D_MBCS -DWIN64)
+else()
+add_definitions(-DROCKSDB_PLATFORM_POSIX -DROCKSDB_LIB_IO_POSIX -DOS_LINUX -DROCKSDB_FALLOCATE_PRESENT -DROCKSDB_MALLOC_USABLE_SIZE)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/include)
-include_directories(${PROJECT_SOURCE_DIR}/third-party/gtest-1.7.0/fused-src)
+include_directories(${PROJECT_SOURCE_DIR}/util)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/gtest-1.7.0/fused-src)
 
 set(ROCKSDB_LIBS rocksdblib${ARTIFACT_SUFFIX})
-set(THIRDPARTY_LIBS ${THIRDPARTY_LIBS} gtest)
-set(SYSTEM_LIBS Shlwapi.lib Rpcrt4.lib)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(SYSTEM_LIBS Shlwapi.lib Rpcrt4.lib)
+else()
+    set(SYSTEM_LIBS -lpthread)
+endif()
 
-set(LIBS ${ROCKSDB_LIBS} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
+set(LIBS ${ROCKSDB_LIBS} ${THIRDPARTY_LIBS} gtest ${SYSTEM_LIBS})
 
 add_subdirectory(third-party/gtest-1.7.0/fused-src/gtest)
 
@@ -153,9 +175,6 @@ set(SOURCES
         memtable/skiplistrep.cc
         memtable/vectorrep.cc
         port/stack_trace.cc
-        port/win/env_win.cc
-        port/win/port_win.cc
-        port/win/win_logger.cc
         table/adaptive_table_factory.cc
         table/block.cc
         table/block_based_filter_block.cc
@@ -188,7 +207,7 @@ set(SOURCES
         tools/dump/db_dump_tool.cc
         util/arena.cc
         util/bloom.cc
-        util/build_version.cc
+        build_version.cc
         util/cache.cc
         util/coding.cc
         util/compaction_job_stats_impl.cc
@@ -270,6 +289,20 @@ set(SOURCES
         utilities/write_batch_with_index/write_batch_with_index.cc
         utilities/write_batch_with_index/write_batch_with_index_internal.cc
 )
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    list(APPEND SOURCES
+        port/win/env_win.cc
+        port/win/port_win.cc
+        port/win/win_logger.cc
+    )
+else()
+    list(APPEND SOURCES
+        port/port_posix.cc
+        util/env_posix.cc
+        util/thread_posix.cc
+        util/io_posix.cc
+    )
+endif()
 
 # For test util library that is build only in DEBUG mode
 # and linked to tests. Add test only code that is not #ifdefed for Release here.
@@ -281,13 +314,21 @@ set(TESTUTIL_SOURCE
 )
 
 add_library(rocksdblib${ARTIFACT_SUFFIX} ${SOURCES})
-set_target_properties(rocksdblib${ARTIFACT_SUFFIX} PROPERTIES COMPILE_FLAGS "/Fd${CMAKE_CFG_INTDIR}/rocksdblib${ARTIFACT_SUFFIX}.pdb")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set_target_properties(rocksdblib${ARTIFACT_SUFFIX} PROPERTIES COMPILE_FLAGS "/Fd${CMAKE_CFG_INTDIR}/rocksdblib${ARTIFACT_SUFFIX}.pdb")
+else()
+    set_target_properties(rocksdblib${ARTIFACT_SUFFIX} PROPERTIES COMPILE_FLAGS "-fPIC")
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 add_dependencies(rocksdblib${ARTIFACT_SUFFIX} GenerateBuildVersion)
 
 add_library(rocksdb${ARTIFACT_SUFFIX} SHARED ${SOURCES})
-set_target_properties(rocksdb${ARTIFACT_SUFFIX} PROPERTIES COMPILE_FLAGS "-DROCKSDB_DLL -DROCKSDB_LIBRARY_EXPORTS /Fd${CMAKE_CFG_INTDIR}/rocksdb${ARTIFACT_SUFFIX}.pdb")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set_target_properties(rocksdb${ARTIFACT_SUFFIX} PROPERTIES COMPILE_FLAGS "-DROCKSDB_DLL -DROCKSDB_LIBRARY_EXPORTS /Fd${CMAKE_CFG_INTDIR}/rocksdb${ARTIFACT_SUFFIX}.pdb")
+else()
+    set_target_properties(rocksdb${ARTIFACT_SUFFIX} PROPERTIES COMPILE_FLAGS "-fPIC")
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 add_dependencies(rocksdb${ARTIFACT_SUFFIX} GenerateBuildVersion)
-target_link_libraries(rocksdb${ARTIFACT_SUFFIX} ${LIBS})
+target_link_libraries(rocksdb${ARTIFACT_SUFFIX} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
 
 if (DEFINED JNI)
   if (${JNI} EQUAL 1)
@@ -424,9 +465,16 @@ foreach(sourcefile ${EXES})
 endforeach(sourcefile ${EXES})
 
 # test utilities are only build in debug
+enable_testing()
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 set(TESTUTILLIB testutillib${ARTIFACT_SUFFIX})
 add_library(${TESTUTILLIB} STATIC ${TESTUTIL_SOURCE})
-set_target_properties(${TESTUTILLIB} PROPERTIES COMPILE_FLAGS "/Fd${CMAKE_CFG_INTDIR}/testutillib${ARTIFACT_SUFFIX}.pdb")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set_target_properties(${TESTUTILLIB} PROPERTIES COMPILE_FLAGS "/Fd${CMAKE_CFG_INTDIR}/testutillib${ARTIFACT_SUFFIX}.pdb")
+else()
+    set_target_properties(${TESTUTILLIB} PROPERTIES COMPILE_FLAGS "-fPIC")
+#    target_link_libraries(${TESTUTILLIB} rocksdb${ARTIFACT_SUFFIX})
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 set_target_properties(${TESTUTILLIB}
       PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
       EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
@@ -445,7 +493,11 @@ foreach(sourcefile ${TEST_EXES})
       EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
       EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
       )
-    target_link_libraries(${exename}${ARTIFACT_SUFFIX} ${LIBS} testutillib${ARTIFACT_SUFFIX})
+    target_link_libraries(${exename}${ARTIFACT_SUFFIX} testutillib${ARTIFACT_SUFFIX} ${LIBS})
+    if(NOT "${exename}" MATCHES "db_sanity_test")
+	add_test(NAME ${exename} COMMAND ${exename}${ARTIFACT_SUFFIX})
+	add_dependencies(check ${exename}${ARTIFACT_SUFFIX})
+    endif()
 endforeach(sourcefile ${TEST_EXES})
 
 # C executables must link to a shared object
@@ -460,5 +512,8 @@ foreach(sourcefile ${C_TEST_EXES})
       EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
       EXCLUDE_FROM_DEFAULT_BUILD_RELWITHDEBINFO 1
       )
-    target_link_libraries(${exename}${ARTIFACT_SUFFIX} rocksdb${ARTIFACT_SUFFIX} testutillib${ARTIFACT_SUFFIX})
+    target_link_libraries(${exename}${ARTIFACT_SUFFIX} testutillib${ARTIFACT_SUFFIX} rocksdb${ARTIFACT_SUFFIX} gtest)
+    add_test(NAME ${exename} COMMAND ${exename}${ARTIFACT_SUFFIX})
+    add_dependencies(check ${exename}${ARTIFACT_SUFFIX})
 endforeach(sourcefile ${C_TEST_EXES})
+
