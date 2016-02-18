@@ -42,6 +42,16 @@ string(REGEX REPLACE "\n" "" DATETIME ${DATETIME})
 string(CONCAT GIT_DATE_TIME ${DATETIME})
 endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/include/rocksdb/version.h"
+	ROCKSDB_MAJOR REGEX "ROCKSDB_MAJOR [0-9]")
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/include/rocksdb/version.h"
+	ROCKSDB_MINOR REGEX "ROCKSDB_MINOR [0-9]")
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/include/rocksdb/version.h"
+	ROCKSDB_PATCH REGEX "ROCKSDB_PATCH [0-9]")
+string(REGEX REPLACE ".* ([0-9]*)" "\\1" ROCKSDB_MAJOR ${ROCKSDB_MAJOR})
+string(REGEX REPLACE ".* ([0-9]*)" "\\1" ROCKSDB_MINOR ${ROCKSDB_MINOR})
+string(REGEX REPLACE ".* ([0-9]*)" "\\1" ROCKSDB_PATCH ${ROCKSDB_PATCH})
+
 find_package(Git)
 
 if (GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
@@ -325,7 +335,9 @@ add_library(rocksdb${ARTIFACT_SUFFIX} SHARED ${SOURCES})
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set_target_properties(rocksdb${ARTIFACT_SUFFIX} PROPERTIES COMPILE_FLAGS "-DROCKSDB_DLL -DROCKSDB_LIBRARY_EXPORTS /Fd${CMAKE_CFG_INTDIR}/rocksdb${ARTIFACT_SUFFIX}.pdb")
 else()
-    set_target_properties(rocksdb${ARTIFACT_SUFFIX} PROPERTIES COMPILE_FLAGS "-fPIC")
+    set_target_properties(rocksdb${ARTIFACT_SUFFIX} PROPERTIES COMPILE_FLAGS "-fPIC"
+	OUTPUT_NAME rocksdb VERSION "${ROCKSDB_MAJOR}.${ROCKSDB_MINOR}.${ROCKSDB_PATCH}"
+	SOVERSION ${ROCKSDB_MAJOR})
 endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 add_dependencies(rocksdb${ARTIFACT_SUFFIX} GenerateBuildVersion)
 target_link_libraries(rocksdb${ARTIFACT_SUFFIX} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
@@ -517,3 +529,6 @@ foreach(sourcefile ${C_TEST_EXES})
     add_dependencies(check ${exename}${ARTIFACT_SUFFIX})
 endforeach(sourcefile ${C_TEST_EXES})
 
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/include/rocksdb"
+	DESTINATION include FILES_MATCHING PATTERN "*.h")
+install(TARGETS rocksdb${ARTIFACT_SUFFIX} DESTINATION lib)
