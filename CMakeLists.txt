@@ -26,7 +26,7 @@
 #        msbuild rocksdb.sln /p:Configuration=Release
 #
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8.11)
 project(rocksdb)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty.inc)
@@ -259,7 +259,6 @@ set(SOURCES
         util/status_message.cc
         util/string_util.cc
         util/sync_point.cc
-        util/testharness.cc
         util/testutil.cc
         util/thread_local.cc
         util/thread_status_impl.cc
@@ -313,6 +312,9 @@ else()
         util/io_posix.cc
     )
 endif()
+set(APP_EXTRA_SOURCES
+    util/testharness.cc
+)
 
 # For test util library that is build only in DEBUG mode
 # and linked to tests. Add test only code that is not #ifdefed for Release here.
@@ -341,6 +343,8 @@ else()
 endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 add_dependencies(rocksdb${ARTIFACT_SUFFIX} GenerateBuildVersion)
 target_link_libraries(rocksdb${ARTIFACT_SUFFIX} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
+
+add_library(app_extra OBJECT ${APP_EXTRA_SOURCES})
 
 if (DEFINED JNI)
   if (${JNI} EQUAL 1)
@@ -472,7 +476,8 @@ set(EXES ${APPS})
 foreach(sourcefile ${EXES})
     string(REPLACE ".cc" "" exename ${sourcefile})
     string(REGEX REPLACE "^((.+)/)+" "" exename ${exename})
-    add_executable(${exename}${ARTIFACT_SUFFIX} ${sourcefile})
+    add_executable(${exename}${ARTIFACT_SUFFIX} ${sourcefile}
+	$<TARGET_OBJECTS:app_extra>)
     target_link_libraries(${exename}${ARTIFACT_SUFFIX} ${LIBS})
 endforeach(sourcefile ${EXES})
 
@@ -499,7 +504,8 @@ set(TEST_EXES ${TESTS})
 foreach(sourcefile ${TEST_EXES})
     string(REPLACE ".cc" "" exename ${sourcefile})
     string(REGEX REPLACE "^((.+)/)+" "" exename ${exename})
-    add_executable(${exename}${ARTIFACT_SUFFIX} ${sourcefile})
+    add_executable(${exename}${ARTIFACT_SUFFIX} ${sourcefile}
+	$<TARGET_OBJECTS:app_extra>)
     set_target_properties(${exename}${ARTIFACT_SUFFIX}
       PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE 1
       EXCLUDE_FROM_DEFAULT_BUILD_MINRELEASE 1
