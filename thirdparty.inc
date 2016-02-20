@@ -7,6 +7,7 @@ set(USE_GFLAGS_DEFAULT 0)        # GFLAGS is disabled by default, enable with -D
 set(USE_SNAPPY_DEFAULT 0)        # SNAPPY is disabled by default, enable with -DSNAPPY=1 cmake command line agrument
 set(USE_LZ4_DEFAULT 0)           # LZ4 is disabled by default, enable with -DLZ4=1 cmake command line agrument
 set(USE_ZLIB_DEFAULT 0)          # ZLIB is disabled by default, enable with -DZLIB=1 cmake command line agrument
+set(USE_BZIP2_DEFAULT 0)          # BZIP2 is disabled by default, enable with -DBZIP2=1 cmake command line agrument
 set(USE_JEMALLOC_DEFAULT 0)      # JEMALLOC is disabled by default, enable with -DJEMALLOC=1 cmake command line agrument
 
 #
@@ -158,6 +159,54 @@ if (${USE_LZ4} EQUAL 1)
   set (THIRDPARTY_LIBS ${THIRDPARTY_LIBS} ${LZ4_LIBS})
 else ()
   message(STATUS "LZ4 library is disabled")
+endif ()
+
+# ================================================== BZIP2 ==================================================
+#
+# Edit these 4 lines to define paths to BZIP2
+#
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(BZIP2_HOME $ENV{THIRDPARTY_HOME}/BZIP2.Library)
+    set(BZIP2_INCLUDE ${BZIP2_HOME}/inc/include)
+    set(BZIP2_LIB_DEBUG ${BZIP2_HOME}/bin/debug/amd64/libbz2.lib)
+    set(BZIP2_LIB_RELEASE ${BZIP2_HOME}/bin/retail/amd64/libbz2.lib)
+else()
+    set(BZIP2_LIB_DEBUG -lbz2)
+    set(BZIP2_LIB_RELEASE -lbz2)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+
+#
+# Don't touch these lines
+#
+if (DEFINED BZIP2)
+  set(USE_BZIP2 ${BZIP2})
+else ()
+  set(USE_BZIP2 ${USE_BZIP2_DEFAULT})
+endif ()
+
+if (${USE_BZIP2} EQUAL 1)
+  message(STATUS "BZIP2 library is enabled")
+  
+  if(DEFINED ENV{BZIP2_INCLUDE})
+    set(BZIP2_INCLUDE $ENV{BZIP2_INCLUDE})
+  endif()
+  
+  if(DEFINED ENV{BZIP2_LIB_DEBUG})
+    set(BZIP2_LIB_DEBUG $ENV{BZIP2_LIB_DEBUG})
+  endif()
+
+  if(DEFINED ENV{BZIP2_LIB_RELEASE})
+    set(BZIP2_LIB_RELEASE $ENV{BZIP2_LIB_RELEASE})
+  endif()
+  
+  set(BZIP2_CXX_FLAGS -DBZIP2)
+  set(BZIP2_LIBS debug ${BZIP2_LIB_DEBUG} optimized ${BZIP2_LIB_RELEASE})
+
+  add_definitions(${BZIP2_CXX_FLAGS})
+  include_directories(${BZIP2_INCLUDE})
+  set (THIRDPARTY_LIBS ${THIRDPARTY_LIBS} ${BZIP2_LIBS})
+else ()
+  message(STATUS "BZIP2 library is disabled")
 endif ()
 
 # ================================================== ZLIB ==================================================
